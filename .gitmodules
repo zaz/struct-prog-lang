@@ -1,0 +1,3 @@
+[submodule "contrib/zaz"]
+	path = contrib/zaz
+	url = https://github.com/zaz/prog-lang.git
