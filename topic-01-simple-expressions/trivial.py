@@ -1,5 +1,5 @@
 from tokenizer import tokenize
-from parser import parse
+from parser import parse, format
 from evaluator import evaluate
 import sys
 
@@ -11,6 +11,9 @@ def main():
             continue  # Skip empty lines
         tokens = tokenize(line)
         ast = parse(tokens)
+        print("---")
+        print(format(ast))
+        print("---")
         result = evaluate(ast)
         print(result)
 

@@ -50,6 +50,17 @@ def parse(tokens):
     ast, _ = parse_expression(tokens)
     return ast
 
+def format(ast, indent = 0):
+    indentation = " " * indent
+    if ast["kind"] in ["number"]:
+        return indentation + str(ast["value"])
+    result = indentation + ast["kind"]
+    if ast["left"]:
+        result = result + "\n" + format(ast["left"], indent=indent+4)
+    if ast["right"]:
+        result = result + "\n" + format(ast["right"], indent=indent+4)
+    return result
+
 from tokenizer import tokenize
 
 def test_simple_addition_parsing():
@@ -97,10 +108,27 @@ def test_operation_precedence_parsing():
         },
     }
 
+def test_format_ast():
+    print("testing format AST...")
+    ast = {
+        "kind": "-",
+        "value": None,
+        "left": {"kind": "number", "value": 4, "left": None, "right": None},
+        "right": {
+            "kind": "/",
+            "value": None,
+            "left": {"kind": "number", "value": 2, "left": None, "right": None},
+            "right": {"kind": "number", "value": 1, "left": None, "right": None},
+        },
+    }
+    result = format(ast)
+    assert result == '-\n    4\n    /\n        2\n        1'
+
 
 if __name__ == "__main__":
     test_simple_addition_parsing()
     test_nested_expressions_parsing()
     test_operation_precedence_parsing()
+    test_format_ast()
     print("done.")
 
