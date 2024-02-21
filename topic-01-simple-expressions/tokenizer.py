@@ -3,7 +3,7 @@ import re
 patterns = [
     [r"//.*\n", "comment"],  # Comment
     [r"\s+", None],  # Whitespace
-    [r"\d*\.\d+|\d+\.\d*|\d+", "number"],  # numeric literals
+    [r"\d*\.\d+|\d+\.\d*|\d+", "positive_number"],  # numeric literals
     [r'"([^"]|"")*"', "string"],  # string literals
     [r"true|false", "boolean"],  # boolean literals
     [r"null", "null"],  # the null literal
@@ -81,7 +81,7 @@ def tokenize(characters):
         if token["kind"] == "string":
             token["value"] = token["value"][1:-1].replace('""', '"')
             continue
-        if token["kind"] == "number":
+        if token["kind"] == "positive_number":
             if "." in token["value"]:
                 token["value"] = float(token["value"])
             else:
@@ -118,7 +118,7 @@ def test_number_tokens():
     for s in ["1", "22", "12.1", "0", "12.", "123145", ".1234"]:
         t = tokenize(s)
         assert len(t) == 1, f"got tokens = {t}"
-        assert t[0]["kind"] == "number"
+        assert t[0]["kind"] == "positive_number"
         assert t[0]["value"] == float(s)
 
 
@@ -161,7 +161,7 @@ def test_whitespace():
     for s in ["1", "1  ", "  1", "  1  "]:
         t = tokenize(s)
         assert len(t) == 1
-        assert t[0]["kind"] == "number"
+        assert t[0]["kind"] == "positive_number"
         assert t[0]["value"] == 1
 
 
@@ -175,27 +175,27 @@ def verify_same_tokens(a, b):
 def test_multiple_tokens():
     print("testing multiple tokens...")
     assert tokenize("1+2") == [
-        {"kind": "number", "value": 1, "position": 0},
+        {"kind": "positive_number", "value": 1, "position": 0},
         {"kind": "+", "value": "+", "position": 1},
-        {"kind": "number", "value": 2, "position": 2},
+        {"kind": "positive_number", "value": 2, "position": 2},
     ]
     assert tokenize("1+2-3") == [
-        {"kind": "number", "value": 1, "position": 0},
+        {"kind": "positive_number", "value": 1, "position": 0},
         {"kind": "+", "value": "+", "position": 1},
-        {"kind": "number", "value": 2, "position": 2},
+        {"kind": "positive_number", "value": 2, "position": 2},
         {"kind": "-", "value": "-", "position": 3},
-        {"kind": "number", "value": 3, "position": 4},
+        {"kind": "positive_number", "value": 3, "position": 4},
     ]
 
     assert tokenize("3+4*(5-2)") == [
-        {"kind": "number", "value": 3, "position": 0},
+        {"kind": "positive_number", "value": 3, "position": 0},
         {"kind": "+", "value": "+", "position": 1},
-        {"kind": "number", "value": 4, "position": 2},
+        {"kind": "positive_number", "value": 4, "position": 2},
         {"kind": "*", "value": "*", "position": 3},
         {"kind": "(", "value": "(", "position": 4},
-        {"kind": "number", "value": 5, "position": 5},
+        {"kind": "positive_number", "value": 5, "position": 5},
         {"kind": "-", "value": "-", "position": 6},
-        {"kind": "number", "value": 2, "position": 7},
+        {"kind": "positive_number", "value": 2, "position": 7},
         {"kind": ")", "value": ")", "position": 8},
     ]
 
