@@ -55,42 +55,40 @@ def tokenize(characters):
     position = 0
     while position < len(characters):
         # find the first token pattern that matches
-        for pattern, kind in patterns:
+        for pattern, tag in patterns:
             match = pattern.match(characters, position)
             if match:
                 break
         # this should never fail, since the last pattern matches everything.
         assert match
         # skip whitespace and comments
-        if kind == None:
+        if tag == None:
             position = match.end()
             continue
         # get the value of the token
-        if kind == "error":
+        if tag == "error":
             # complain about errors and throw exception
             raise Exception(f"Syntax error: illegal character : {[value]}")
         else:
             # package the token
-            tokens.append(
-                {"kind": kind, "value": match.group(0), "position": position}
-            )
+            tokens.append({"tag": tag, "value": match.group(0), "position": position})
         # update position for next match
         position = match.end()
     # do some post-processing on strings and numbers and booleans
     for token in tokens:
-        if token["kind"] == "string":
+        if token["tag"] == "string":
             token["value"] = token["value"][1:-1].replace('""', '"')
             continue
-        if token["kind"] == "number":
+        if token["tag"] == "number":
             if "." in token["value"]:
                 token["value"] = float(token["value"])
             else:
                 token["value"] = int(token["value"])
             continue
-        if token["kind"] == "boolean":
+        if token["tag"] == "boolean":
             token["value"] = token["value"] == "true"
             continue
-        if token["kind"] == "null":
+        if token["tag"] == "null":
             token["value"] = None
             continue
     return tokens
@@ -101,7 +99,7 @@ def test_simple_tokens():
     examples = ".,[,],+,-,*,/,(,),{,},;".split(",")
     for example in examples:
         t = tokenize(example)[0]
-        assert t["kind"] == example
+        assert t["tag"] == example
         assert t["value"] == example
         assert t["position"] == 0
     example = "(*/ +-[]{})  "
@@ -118,7 +116,7 @@ def test_number_tokens():
     for s in ["1", "22", "12.1", "0", "12.", "123145", ".1234"]:
         t = tokenize(s)
         assert len(t) == 1, f"got tokens = {t}"
-        assert t[0]["kind"] == "number"
+        assert t[0]["tag"] == "number"
         assert t[0]["value"] == float(s)
 
 
@@ -127,7 +125,7 @@ def test_string_tokens():
     for s in ['"example"', '"this is a longer example"', '"an embedded "" quote"']:
         t = tokenize(s)
         assert len(t) == 1
-        assert t[0]["kind"] == "string"
+        assert t[0]["tag"] == "string"
         # adjust for the embedded quote behaviour
         assert t[0]["value"] == s[1:-1].replace('""', '"')
 
@@ -137,13 +135,13 @@ def test_boolean_tokens():
     for s in ["true", "false"]:
         t = tokenize(s)
         assert len(t) == 1
-        assert t[0]["kind"] == "boolean"
+        assert t[0]["tag"] == "boolean"
         assert t[0]["value"] == (
             s == "true"
         ), f"got {[t[0]['value']]} expected {[(s == 'true')]}"
     t = tokenize("null")
     assert len(t) == 1
-    assert t[0]["kind"] == "null"
+    assert t[0]["tag"] == "null"
     assert t[0]["value"] == None
 
 
@@ -152,7 +150,7 @@ def test_identifier_tokens():
     for s in ["x", "y", "z", "alpha", "beta", "gamma"]:
         t = tokenize(s)
         assert len(t) == 1
-        assert t[0]["kind"] == "identifier"
+        assert t[0]["tag"] == "identifier"
         assert t[0]["value"] == s
 
 
@@ -161,7 +159,7 @@ def test_whitespace():
     for s in ["1", "1  ", "  1", "  1  "]:
         t = tokenize(s)
         assert len(t) == 1
-        assert t[0]["kind"] == "number"
+        assert t[0]["tag"] == "number"
         assert t[0]["value"] == 1
 
 
@@ -169,34 +167,35 @@ def verify_same_tokens(a, b):
     def remove_position(tokens):
         for t in tokens:
             t["position"] == None
+
     return remove_position(tokenize(a)) == remove_position(tokenize(b))
 
 
 def test_multiple_tokens():
     print("testing multiple tokens...")
     assert tokenize("1+2") == [
-        {"kind": "number", "value": 1, "position": 0},
-        {"kind": "+", "value": "+", "position": 1},
-        {"kind": "number", "value": 2, "position": 2},
+        {"tag": "number", "value": 1, "position": 0},
+        {"tag": "+", "value": "+", "position": 1},
+        {"tag": "number", "value": 2, "position": 2},
     ]
     assert tokenize("1+2-3") == [
-        {"kind": "number", "value": 1, "position": 0},
-        {"kind": "+", "value": "+", "position": 1},
-        {"kind": "number", "value": 2, "position": 2},
-        {"kind": "-", "value": "-", "position": 3},
-        {"kind": "number", "value": 3, "position": 4},
+        {"tag": "number", "value": 1, "position": 0},
+        {"tag": "+", "value": "+", "position": 1},
+        {"tag": "number", "value": 2, "position": 2},
+        {"tag": "-", "value": "-", "position": 3},
+        {"tag": "number", "value": 3, "position": 4},
     ]
 
     assert tokenize("3+4*(5-2)") == [
-        {"kind": "number", "value": 3, "position": 0},
-        {"kind": "+", "value": "+", "position": 1},
-        {"kind": "number", "value": 4, "position": 2},
-        {"kind": "*", "value": "*", "position": 3},
-        {"kind": "(", "value": "(", "position": 4},
-        {"kind": "number", "value": 5, "position": 5},
-        {"kind": "-", "value": "-", "position": 6},
-        {"kind": "number", "value": 2, "position": 7},
-        {"kind": ")", "value": ")", "position": 8},
+        {"tag": "number", "value": 3, "position": 0},
+        {"tag": "+", "value": "+", "position": 1},
+        {"tag": "number", "value": 4, "position": 2},
+        {"tag": "*", "value": "*", "position": 3},
+        {"tag": "(", "value": "(", "position": 4},
+        {"tag": "number", "value": 5, "position": 5},
+        {"tag": "-", "value": "-", "position": 6},
+        {"tag": "number", "value": 2, "position": 7},
+        {"tag": ")", "value": ")", "position": 8},
     ]
 
     assert verify_same_tokens("3+4*(5-2)", "3 + 4 * (5 - 2)")
@@ -223,7 +222,7 @@ def test_keywords():
     ]:
         t = tokenize(keyword)
         assert len(t) == 1
-        assert t[0]["kind"] == keyword, f"expected {keyword}, got {t[0]}"
+        assert t[0]["tag"] == keyword, f"expected {keyword}, got {t[0]}"
         assert t[0]["value"] == keyword
 
 
