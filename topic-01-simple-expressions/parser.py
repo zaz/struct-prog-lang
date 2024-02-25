@@ -83,6 +83,16 @@ def test_simple_addition_parsing():
         "right": {"kind": "number", "value": 2, "left": None, "right": None},
     }
 
+def test_unary_negation():
+    print("testing unary negation...")
+    tokens = tokenize("-2")
+    ast = parse(tokens)
+    assert ast == {
+        "kind": "-",
+        "value": None,
+        "left": None,
+        "right": {"kind": "number", "value": 2, "left": None, "right": None},
+    }
 
 def test_nested_expressions_parsing():
     print("testing nested expressions parsing...")
@@ -136,6 +146,7 @@ def test_format_ast():
 
 if __name__ == "__main__":
     test_simple_addition_parsing()
+    test_unary_negation()
     test_nested_expressions_parsing()
     test_operation_precedence_parsing()
     test_format_ast()
