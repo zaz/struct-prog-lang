@@ -1,5 +1,9 @@
 def evaluate(ast):
-    # Base case: if the node is a number, return its value as a float
+    # Base cases:
+    # if the node is nonexistent, return 0 (for unary negation)
+    if ast is None:
+        return 0
+    # if the node is a number, return its value as a float
     if ast['kind'] == 'number':
         assert type(ast['value']) in [float, int], f"unexpected ast numeric value {ast['value']} type is a {type(ast['value'])}."
         return ast['value']
