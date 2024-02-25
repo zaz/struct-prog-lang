@@ -39,6 +39,14 @@ def test_evaluate_simple_addition():
     assert evaluate(parse(tokenize("1 + 4"))) == 5
     equals("1 + 4", 5)
 
+def test_evaluate_unary_negation():
+    print("testing unary negation.")
+    ast = {'kind': '-', 'left': None, 'right': {'kind': 'number', 'value': 2}}
+    assert evaluate(ast) == -2
+    t = tokenize("-(1 + 3)")
+    ast = parse(t)
+    assert evaluate(ast) == -4
+    assert evaluate(parse(tokenize("1 + (-4)"))) == -3
 
 def test_evaluate_complex_expression():
     print("testing complex expression.")
@@ -75,6 +83,7 @@ def test_evaluate_division_by_zero():
 if __name__ == "__main__":
     print("testing evaluator.")
     test_evaluate_simple_addition()
+    test_evaluate_unary_negation()
     test_evaluate_complex_expression()
     test_evaluate_subtraction()
     test_evaluate_division()
