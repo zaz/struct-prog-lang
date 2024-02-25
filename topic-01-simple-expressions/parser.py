@@ -3,7 +3,8 @@
 '''
 expression = term { ("+" | "-") term }
 term = factor { ("*" | "/") factor }
-factor = positive_number | "(" expression ")"
+factor = { "-" } positive_factor
+positive_factor = positive_number | "(" expression ")"
 positive_number = <positive_number>
 '''
 
@@ -33,6 +34,14 @@ def parse_term(tokens):
     return node, tokens
 
 def parse_factor(tokens):
+    if tokens[0]["kind"] == "-":
+        node, tokens = parse_positive_factor(tokens[1:])
+        node = create_node("-", right=node)
+    else:
+        node, tokens = parse_positive_factor(tokens)
+    return node, tokens
+
+def parse_positive_factor(tokens):
     token = tokens[0]
     kind = token["kind"]
     if kind == "positive_number":
