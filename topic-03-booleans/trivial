@@ -2,6 +2,9 @@
 
 import sys
 import readline
+from tokenizer import tokenize
+from parser import parse, format
+from evaluator import evaluate
 
 
 def repl(eval):
@@ -64,9 +67,10 @@ def repl(eval):
 
 # dummy evaluation function
 def eval(code, environment):
-    environment["n"] = environment.get("n", 0) + 1
+    tokens = tokenize(code)
+    ast = parse(tokens)
+    result, environment = evaluate(ast, environment)
     return environment
-
 
 if __name__ == "__main__":
     repl(eval)
