@@ -90,7 +90,7 @@ def tokenize(characters):
                 token["value"] = int(token["value"])
             continue
         if token["tag"] == "boolean":
-            token["value"] = token["value"] == "true"
+            token["value"] = 1 if token["value"] == "true" else 0
             continue
         if token["tag"] == "null":
             token["value"] = None

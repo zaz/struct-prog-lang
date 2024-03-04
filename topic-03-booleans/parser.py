@@ -68,6 +68,8 @@ def parse_factor(tokens):
     tag = token["tag"]
     if tag == "number":
         return create_node("number", value=token["value"]), tokens[1:]
+    if tag == "boolean":
+        return create_node("boolean", value=token["value"]), tokens[1:]
     if tag == "identifier":
         return create_node("identifier", value=token["value"]), tokens[1:]
     if tag == "(":
@@ -153,6 +155,19 @@ def test_simple_identifier_parsing():
         "left": {"tag": "identifier", "value": "x", "left": None, "right": None},
         "right": {"tag": "identifier", "value": "y", "left": None, "right": None},
     }
+
+def test_boolean_parsing():
+    print("test boolean parsing...")
+    for token_identifer in ["true","false"]:
+        tokens = tokenize(token_identifer)
+        value = tokens[0]["value"]
+        ast = parse(tokens)
+        assert ast == {
+            "tag": "boolean",
+            "value": value,
+            "left":  None, 
+            "right": None
+        }
 
 
 def test_logical_operators_parsing():
@@ -338,7 +353,6 @@ def test_assignment_parsing():
     print("test assignment parsing...")
     tokens = tokenize("x=5+3")
     ast = parse(tokens)
-    exit()
     assert ast == {
         "tag": "=",
         "value": None,
@@ -379,4 +393,5 @@ if __name__ == "__main__":
     test_nested_expressions_parsing()
     test_operator_precedence_parsing()
     test_assignment_parsing()
+    test_boolean_parsing()
     print("done.")

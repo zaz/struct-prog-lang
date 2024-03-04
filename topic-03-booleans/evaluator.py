@@ -16,7 +16,12 @@ def evaluate_expression(ast, environment):
         return - left_value, environment
     elif ast['tag'] == 'not':
         left_value, environment = evaluate(ast['left'], environment)
-        return not left_value, environment
+        if left_value:
+            left_value = 0
+        else:
+            left_value = 1
+        # left_value = 0 if left_value else 0
+        return left_value, environment
 
     # binary operations
     left_value, environment = evaluate(ast['left'], environment)
@@ -119,6 +124,19 @@ def test_relational_operators():
     equals("4==4", {}, 1)
     equals("4==1", {}, 0)
 
+def test_logical_operators():
+    print("test logical operators.")
+    equals("1==1", {}, 1)
+    equals("1!=1", {}, 0)
+    equals("1&&1", {}, 1)
+    equals("1&&0", {}, 0)
+    equals("0&&0", {}, 0)
+    equals("1||1", {}, 1)
+    equals("1||0", {}, 1)
+    equals("0||0", {}, 0)
+    equals("!1", {}, 0)
+    equals("!0", {}, 1)
+
 def test_evaluate_division_by_zero():
     print("test evaluate division by zero.")
     try:
@@ -139,6 +157,7 @@ if __name__ == "__main__":
     test_evaluate_division_by_zero()
     test_unary_operators()
     test_relational_operators()
+    test_logical_operators()
 
     print("done.")
 
