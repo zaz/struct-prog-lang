@@ -1,7 +1,8 @@
 """
-if_statement == "if" "(" logical_expression ")" statement
+if_statement == "if" "(" logical_expression ")" statement (else statment)
 while_statment == "while" "(" logical_expression ")" statement
-statement = assignment | expression
+block_statement == "{" statement { ";" statement } [";"] "}"
+statement = ( if_statement | while_statement | block_statement | assignment | expression )
 assignment = identifier "=" expression
 arithmetic_expression = term { ("+" | "-") term }
 relational_expression = arithmetic_expression { ("<" | ">" | "<=" | ">=" | "==" | "!=") arithmetic_expression}
@@ -66,14 +67,33 @@ def parse_while_statement(tokens):
     statement, tokens = parse_statement(tokens[1:])
     return {"tag": "while", "condition": condition, "do": statement}, tokens
 
+def parse_block_statement(tokens):
+    # block_statement == "{" statement { ";" statement } [";"] "}"
+    assert tokens[0]["tag"] == "{"
+    statement, tokens = parse_statement(tokens[1:])
+    first_node = {"tag": "block", "statement": statement}
+    current_node = first_node
+    while tokens[0]["tag"] == ";":
+        tokens = tokens[1:]
+        if tokens[0]["tag"] != "}":
+            next_statement, tokens = parse_statement(tokens)
+            next_node = {"tag": "block", "statement": statement}
+            current_node["next"] = next_node
+            current_node = next_node
+    assert tokens[0]["tag"] == "}", str(tokens)
+    tokens = tokens[1:]
+    return first_node, tokens
 
 def parse_statement(tokens):
+    # statement = if_statement | while_statement | block_statement | assignment | expression
     tag = tokens[0]["tag"]
     # note: none of these consumes a token
     if tag == "if":
         return parse_if_statement(tokens)
     if tag == "while":
         return parse_while_statement(tokens)
+    if tag == "{":
+        return parse_block_statement(tokens)
     if tag == "<identifier>":
         if tokens[1]["tag"] == "=":
             return parse_assignment(tokens)
@@ -418,7 +438,21 @@ def test_if_statement():
         },
         "else": None,
     }
-
+    tokens = tokenize("if(1){x=1}")
+    ast = parse(tokens)
+    assert ast == {
+        "tag": "if",
+        "condition": {"tag": "<number>", "value": 1},
+        "then": {
+            "tag": "block",
+            "statement": {
+                "tag": "=",
+                "target": {"tag": "<identifier>", "value": "x"},
+                "value": {"tag": "<number>", "value": 1},
+            },
+        },
+        "else": None,
+    }
 
 def test_while_statement():
     print("test while statement...")
@@ -434,6 +468,67 @@ def test_while_statement():
         },
     }
 
+def test_block_statement():
+    print("test block statement...")
+    tokens = tokenize("{x=1}")
+    ast = parse(tokens)
+    assert ast == {
+        "tag": "block",
+        "statement": {
+            "tag": "=",
+            "target": {"tag": "<identifier>", "value": "x"},
+            "value": {"tag": "<number>", "value": 1},
+        },
+    }
+    tokens = tokenize("{x=1;y=2}")
+    ast = parse(tokens)
+    assert ast == {
+        "tag": "block",
+        "statement": {
+            "tag": "=",
+            "target": {"tag": "<identifier>", "value": "x"},
+            "value": {"tag": "<number>", "value": 1},
+        },
+        "next": {
+            "tag": "block",
+            "statement": {
+                "tag": "=",
+                "target": {"tag": "<identifier>", "value": "x"},
+                "value": {"tag": "<number>", "value": 1},
+            },
+        },
+    }
+    tokens = tokenize("{x=1;y=2;z=3}")
+    ast = parse(tokens)
+    assert ast == {
+        "tag": "block",
+        "statement": {
+            "tag": "=",
+            "target": {"tag": "<identifier>", "value": "x"},
+            "value": {"tag": "<number>", "value": 1},
+        },
+        "next": {
+            "tag": "block",
+            "statement": {
+                "tag": "=",
+                "target": {"tag": "<identifier>", "value": "x"},
+                "value": {"tag": "<number>", "value": 1},
+            },
+            "next": {
+                "tag": "block",
+                "statement": {
+                    "tag": "=",
+                    "target": {"tag": "<identifier>", "value": "x"},
+                    "value": {"tag": "<number>", "value": 1},
+                },
+            },
+        },
+    }
+    saved_ast = ast
+    tokens = tokenize("{x=1;y=2;z=3;}")
+    ast = parse(tokens)
+    assert ast == saved_ast
+
 
 if __name__ == "__main__":
     test_simple_addition_parsing()
@@ -447,4 +542,5 @@ if __name__ == "__main__":
     test_boolean_parsing()
     test_if_statement()
     test_while_statement()
+    test_block_statement()
     print("done.")

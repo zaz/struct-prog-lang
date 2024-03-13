@@ -59,18 +59,39 @@ def evaluate_expression(ast, environment):
     else:
         raise Exception(f"Unknown operation: {ast['tag']}")
 
-def evaluate(ast, environment):
-    if ast['tag'] == '=':
-        assert ast['target']['tag'] == '<identifier>', f"ERROR: Expecting identifier in assignment statement."
-        identifier = ast['target']['value']
 
-        assert ast['value'], f"ERROR: Expecting expression in assignment statement."
-        value, environment = evaluate_expression(ast['value'], environment)
+def evaluate_statement(ast, environment):
+
+    if ast["tag"] == "=":
+        assert (
+            ast["target"]["tag"] == "<identifier>"
+        ), f"ERROR: Expecting identifier in assignment statement."
+        identifier = ast["target"]["value"]
+
+        assert ast["value"], f"ERROR: Expecting expression in assignment statement."
+        value, environment = evaluate_expression(ast["value"], environment)
 
         environment[identifier] = value
         return None, environment
 
+    if ast["tag"] == "if":
+        condition, environment = evaluate_expression(ast["condition"], environment)
+        if condition:
+            _, environment = evaluate_statement(ast["then"], environment)
+            return None, environment
+        else:
+            if ast.get("else", None):
+                _, environment = evaluate_statement(ast["else"], environment)
+                return None, environment
+        return None, environment
+    if ast["tag"] == "while":
+        pass
+
     return evaluate_expression(ast, environment)
+
+def evaluate(ast, environment):
+
+    return evaluate_statement(ast, environment)
 
 
 from tokenizer import tokenize
@@ -112,20 +133,23 @@ def test_evaluate_division():
     print("test evaluate division.")
     equals("15/5", {}, 3)
 
-def test_unary_operators():
-    print("test unary operators.")
+
+def test_evaluate_unary_operators():
+    print("test evaluate unary operators.")
     equals("-5", {}, -5)
     equals("!0", {}, 1)
     equals("!1", {}, 0)
 
-def test_relational_operators():
-    print("test relational operators.")
+
+def test_evaluate_relational_operators():
+    print("test evaluate relational operators.")
     equals("2<3", {}, 1)
     equals("4==4", {}, 1)
     equals("4==1", {}, 0)
 
-def test_logical_operators():
-    print("test logical operators.")
+
+def test_evaluate_logical_operators():
+    print("test evaluate logical operators.")
     equals("1==1", {}, 1)
     equals("1!=1", {}, 0)
     equals("1&&1", {}, 1)
@@ -137,6 +161,7 @@ def test_logical_operators():
     equals("!1", {}, 0)
     equals("!0", {}, 1)
 
+
 def test_evaluate_division_by_zero():
     print("test evaluate division by zero.")
     try:
@@ -144,6 +169,10 @@ def test_evaluate_division_by_zero():
         assert False, "Expected a division by zero error"
     except Exception as e:
         assert str(e) == "Division by zero"
+
+def test_evaluate_if_statement():
+    print("test evaluate if statement.")
+    equals("if (1) x=4", {"x": 0}, None, {"x": 4})
 
 if __name__ == "__main__":
     print("test evaluator...")
@@ -155,8 +184,9 @@ if __name__ == "__main__":
     test_evaluate_subtraction()
     test_evaluate_division()
     test_evaluate_division_by_zero()
-    test_unary_operators()
-    test_relational_operators()
-    test_logical_operators()
+    test_evaluate_unary_operators()
+    test_evaluate_relational_operators()
+    test_evaluate_logical_operators()
+    test_evaluate_if_statement()
 
     print("done.")
