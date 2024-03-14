@@ -71,15 +71,14 @@ def parse_block_statement(tokens):
     # block_statement == "{" statement { ";" statement } [";"] "}"
     assert tokens[0]["tag"] == "{"
     statement, tokens = parse_statement(tokens[1:])
-    first_node = {"tag": "block", "statement": statement}
-    current_node = first_node
+    node = {"tag": "block", "statement": statement}
+    first_node = node
     while tokens[0]["tag"] == ";":
         tokens = tokens[1:]
         if tokens[0]["tag"] != "}":
-            next_statement, tokens = parse_statement(tokens)
-            next_node = {"tag": "block", "statement": statement}
-            current_node["next"] = next_node
-            current_node = next_node
+            statement, tokens = parse_statement(tokens)
+            node["next"] = {"tag": "block", "statement": statement}
+            node = node["next"]
     assert tokens[0]["tag"] == "}", str(tokens)
     tokens = tokens[1:]
     return first_node, tokens
@@ -493,8 +492,8 @@ def test_block_statement():
             "tag": "block",
             "statement": {
                 "tag": "=",
-                "target": {"tag": "<identifier>", "value": "x"},
-                "value": {"tag": "<number>", "value": 1},
+                "target": {"tag": "<identifier>", "value": "y"},
+                "value": {"tag": "<number>", "value": 2},
             },
         },
     }
@@ -511,15 +510,15 @@ def test_block_statement():
             "tag": "block",
             "statement": {
                 "tag": "=",
-                "target": {"tag": "<identifier>", "value": "x"},
-                "value": {"tag": "<number>", "value": 1},
+                "target": {"tag": "<identifier>", "value": "y"},
+                "value": {"tag": "<number>", "value": 2},
             },
             "next": {
                 "tag": "block",
                 "statement": {
                     "tag": "=",
-                    "target": {"tag": "<identifier>", "value": "x"},
-                    "value": {"tag": "<number>", "value": 1},
+                    "target": {"tag": "<identifier>", "value": "z"},
+                    "value": {"tag": "<number>", "value": 3},
                 },
             },
         },

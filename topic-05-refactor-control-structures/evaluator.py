@@ -70,9 +70,9 @@ def evaluate_expression(ast, environment):
 def evaluate_statement(ast, environment):
 
     if ast["tag"] == "block":
-        value, environment = evaluate(ast["statement"], environment)
+        value, environment = evaluate_statement(ast["statement"], environment)
         if ast.get("next"):
-            value.environment = evaluate(ast["next"], environment)
+            value, environment = evaluate_statement(ast["next"], environment)
         return None, environment
 
     if ast["tag"] == "=":
@@ -97,6 +97,7 @@ def evaluate_statement(ast, environment):
                 _, environment = evaluate_statement(ast["else"], environment)
                 return None, environment
         return None, environment
+
     if ast["tag"] == "while":
         pass
 
@@ -201,7 +202,10 @@ def test_evaluate_if_statement():
 
 
 def test_evaluate_block_statement():
+    print("test evaluate block statement.")
     equals("{x=4}", {}, None, {"x": 4})
+    equals("{x=4; y=3}", {}, None, {"x": 4, "y": 3})
+    equals("{x=4; y=3; y=1}", {}, None, {"x": 4, "y":1})
 
 
 if __name__ == "__main__":
