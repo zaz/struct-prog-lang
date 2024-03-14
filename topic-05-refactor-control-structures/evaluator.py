@@ -1,20 +1,27 @@
 def evaluate_expression(ast, environment):
 
     # simple values
-    if ast['tag'] == '<number>':
-        assert type(ast['value']) in [float, int], f"unexpected ast numeric value {ast['value']} type is a {type(ast['value'])}."
-        return ast['value'], environment
+    if ast["tag"] == "<number>":
+        assert type(ast["value"]) in [
+            float,
+            int,
+        ], f"unexpected ast numeric value {ast['value']} type is a {type(ast['value'])}."
+        return ast["value"], environment
 
-    if ast['tag'] == '<identifier>':
-        assert type(ast['value']) in [str], f"unexpected ast identifer value {ast['value']} type is a {type(ast['value'])}."
-        assert ast['value'] in environment, f"undefined identifier {ast['value']} in expression"
-        return environment[ast['value']], environment
+    if ast["tag"] == "<identifier>":
+        assert type(ast["value"]) in [
+            str
+        ], f"unexpected ast identifer value {ast['value']} type is a {type(ast['value'])}."
+        assert (
+            ast["value"] in environment
+        ), f"undefined identifier {ast['value']} in expression"
+        return environment[ast["value"]], environment
 
     # unary operations
-    if ast['tag'] == 'negate':
-        value, environment = evaluate(ast['value'], environment)
+    if ast["tag"] == "negate":
+        value, environment = evaluate(ast["value"], environment)
         return -value, environment
-    elif ast['tag'] == 'not':
+    elif ast["tag"] == "not":
         value, environment = evaluate(ast["value"], environment)
         if value:
             value = 0
@@ -24,43 +31,49 @@ def evaluate_expression(ast, environment):
         return value, environment
 
     # binary operations
-    left_value, environment = evaluate(ast['left'], environment)
-    right_value, environment = evaluate(ast['right'], environment)
+    left_value, environment = evaluate(ast["left"], environment)
+    right_value, environment = evaluate(ast["right"], environment)
 
-    if ast['tag'] == '+':
+    if ast["tag"] == "+":
         return left_value + right_value, environment
-    elif ast['tag'] == '-':
+    elif ast["tag"] == "-":
         return left_value - right_value, environment
-    elif ast['tag'] == '*':
+    elif ast["tag"] == "*":
         return left_value * right_value, environment
-    elif ast['tag'] == '/':
+    elif ast["tag"] == "/":
         # Add error handling for division by zero
         if right_value == 0:
             raise Exception("Division by zero")
         return left_value / right_value, environment
-    elif ast['tag'] == '*':
+    elif ast["tag"] == "*":
         return left_value * right_value, environment
-    elif ast['tag'] == '<':
-        return int(left_value <right_value), environment
-    elif ast['tag'] == '>':
+    elif ast["tag"] == "<":
+        return int(left_value < right_value), environment
+    elif ast["tag"] == ">":
         return int(left_value > right_value), environment
-    elif ast['tag'] == '<=':
+    elif ast["tag"] == "<=":
         return int(left_value <= right_value), environment
-    elif ast['tag'] == '>=':
+    elif ast["tag"] == ">=":
         return int(left_value >= right_value), environment
-    elif ast['tag'] == '==':
+    elif ast["tag"] == "==":
         return int(left_value == right_value), environment
-    elif ast['tag'] == '!=':
+    elif ast["tag"] == "!=":
         return int(left_value != right_value), environment
-    elif ast['tag'] == '&&':
+    elif ast["tag"] == "&&":
         return int(left_value and right_value), environment
-    elif ast['tag'] == '||':
+    elif ast["tag"] == "||":
         return int(left_value or right_value), environment
     else:
         raise Exception(f"Unknown operation: {ast['tag']}")
 
 
 def evaluate_statement(ast, environment):
+
+    if ast["tag"] == "block":
+        value, environment = evaluate(ast["statement"], environment)
+        if ast.get("next"):
+            value.environment = evaluate(ast["next"], environment)
+        return None, environment
 
     if ast["tag"] == "=":
         assert (
@@ -89,31 +102,40 @@ def evaluate_statement(ast, environment):
 
     return evaluate_expression(ast, environment)
 
-def evaluate(ast, environment):
 
+def evaluate(ast, environment):
     return evaluate_statement(ast, environment)
 
 
 from tokenizer import tokenize
 from parser import parse
 
+
 def equals(code, environment, expected_result, expected_environment=None):
     result, environment = evaluate(parse(tokenize(code)), environment)
-    assert result == expected_result, f"ERROR: When executing {[code]}, expected {[expected_result]}, got {[result]}."
+    assert (
+        result == expected_result
+    ), f"ERROR: When executing {[code]}, expected {[expected_result]}, got {[result]}."
     if expected_environment:
-        assert environment == expected_environment, f"ERROR: When executing {[code]}, expected {[expected_environment]}, got {[environment]}."
+        assert (
+            environment == expected_environment
+        ), f"ERROR: When executing {[code]}, expected {[expected_environment]}, got {[environment]}."
+
 
 def test_evaluate_single_value():
     print("test evaluate single value")
     equals("4", {}, 4, {})
 
+
 def test_evaluate_single_identifier():
     print("test evaluate single identifier")
-    equals("x", {"x":3}, 3, {"x":3})
+    equals("x", {"x": 3}, 3, {"x": 3})
+
 
 def test_evaluate_simple_assignment():
     print("test evaluate simple assignment")
-    equals("x=3", {}, None, {"x":3})
+    equals("x=3", {}, None, {"x": 3})
+
 
 def test_evaluate_simple_addition():
     print("test evaluate simple addition")
@@ -125,9 +147,11 @@ def test_evaluate_complex_expression():
     print("test evaluate complex expression")
     equals("(1+2)*(3+4)", {}, 21)
 
+
 def test_evaluate_subtraction():
     print("test evaluate subtraction.")
     equals("11-5", {}, 6)
+
 
 def test_evaluate_division():
     print("test evaluate division.")
@@ -170,9 +194,15 @@ def test_evaluate_division_by_zero():
     except Exception as e:
         assert str(e) == "Division by zero"
 
+
 def test_evaluate_if_statement():
     print("test evaluate if statement.")
     equals("if (1) x=4", {"x": 0}, None, {"x": 4})
+
+
+def test_evaluate_block_statement():
+    equals("{x=4}", {}, None, {"x": 4})
+
 
 if __name__ == "__main__":
     print("test evaluator...")
@@ -188,5 +218,5 @@ if __name__ == "__main__":
     test_evaluate_relational_operators()
     test_evaluate_logical_operators()
     test_evaluate_if_statement()
-
+    test_evaluate_block_statement()
     print("done.")
