@@ -44,15 +44,14 @@ def parse_if_statement(tokens):
     if tokens[0]["tag"] != ")":
         raise Exception(f"Expected '(': {tokens[0]}")
     then_statement, tokens = parse_statement(tokens[1:])
-    else_statement = None
-    if tokens[0]["tag"] == "else":
-        else_statement, tokens = parse_statement(tokens[1:])
-    return {
+    node = {
         "tag": "if",
         "condition": condition,
         "then": then_statement,
-        "else": else_statement,
-    }, tokens
+    }
+    if tokens[0]["tag"] == "else":
+        node["else"], tokens = parse_statement(tokens[1:])
+    return node, tokens
 
 
 def parse_while_statement(tokens):
@@ -66,6 +65,7 @@ def parse_while_statement(tokens):
         raise Exception(f"Expected '(': {tokens[0]}")
     statement, tokens = parse_statement(tokens[1:])
     return {"tag": "while", "condition": condition, "do": statement}, tokens
+
 
 def parse_block_statement(tokens):
     # block_statement == "{" statement { ";" statement } [";"] "}"
@@ -82,6 +82,7 @@ def parse_block_statement(tokens):
     assert tokens[0]["tag"] == "}", str(tokens)
     tokens = tokens[1:]
     return first_node, tokens
+
 
 def parse_statement(tokens):
     # statement = if_statement | while_statement | block_statement | assignment | expression
@@ -435,7 +436,6 @@ def test_if_statement():
             "target": {"tag": "<identifier>", "value": "x"},
             "value": {"tag": "<number>", "value": 1},
         },
-        "else": None,
     }
     tokens = tokenize("if(1){x=1}")
     ast = parse(tokens)
@@ -450,8 +450,30 @@ def test_if_statement():
                 "value": {"tag": "<number>", "value": 1},
             },
         },
-        "else": None,
     }
+    tokens = tokenize("if(1){x=1}else{x=3}")
+    ast = parse(tokens)
+    assert ast == {
+        "tag": "if",
+        "condition": {"tag": "<number>", "value": 1},
+        "then": {
+            "tag": "block",
+            "statement": {
+                "tag": "=",
+                "target": {"tag": "<identifier>", "value": "x"},
+                "value": {"tag": "<number>", "value": 1},
+            },
+        },
+        "else": {
+            "tag": "block",
+            "statement": {
+                "tag": "=",
+                "target": {"tag": "<identifier>", "value": "x"},
+                "value": {"tag": "<number>", "value": 3},
+            },
+        },
+    }
+
 
 def test_while_statement():
     print("test while statement...")
@@ -466,6 +488,7 @@ def test_while_statement():
             "value": {"tag": "<number>", "value": 1},
         },
     }
+
 
 def test_block_statement():
     print("test block statement...")
