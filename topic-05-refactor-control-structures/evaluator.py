@@ -12,10 +12,12 @@ def evaluate_expression(ast, environment):
         assert type(ast["value"]) in [
             str
         ], f"unexpected ast identifer value {ast['value']} type is a {type(ast['value'])}."
-        assert (
-            ast["value"] in environment
-        ), f"undefined identifier {ast['value']} in expression"
-        return environment[ast["value"]], environment
+        current_environment = environment
+        while current_environment:
+            if ast["value"] in current_environment:
+                return current_environment[ast["value"]], environment
+            current_environment = current_environment.get("$parent", None)
+        assert current_environment, f"undefined identifier {ast['value']} in expression"
 
     # unary operations
     if ast["tag"] == "negate":
@@ -99,7 +101,11 @@ def evaluate_statement(ast, environment):
         return None, environment
 
     if ast["tag"] == "while":
-        pass
+        condition, environment = evaluate_expression(ast["condition"], environment)
+        while condition:
+            _, environment = evaluate_statement(ast["do"], environment)
+            condition, environment = evaluate_expression(ast["condition"], environment)
+        return None, environment
 
     return evaluate_expression(ast, environment)
 
@@ -130,7 +136,9 @@ def test_evaluate_single_value():
 
 def test_evaluate_single_identifier():
     print("test evaluate single identifier")
-    equals("x", {"x": 3}, 3, {"x": 3})
+    equals("x", {"x": 3}, 3)
+    equals("y", {"x": 3, "$parent": {"y": 4}}, 4)
+    equals("z", {"x": 3, "$parent": {"y": 4, "$parent": {"z": 5}}}, 5)
 
 
 def test_evaluate_simple_assignment():
@@ -201,11 +209,18 @@ def test_evaluate_if_statement():
     equals("if (1) x=4", {"x": 0}, None, {"x": 4})
 
 
+def test_evaluate_while_statement():
+    print("test evaluate while statement.")
+    equals("while (0) x=4", {"x": 0}, None, {"x": 0})
+    equals("while (x>0) {x=x-1;y=y+1}", {"x": 3, "y": 0}, None, {"x": 0, "y": 3})
+
+
 def test_evaluate_block_statement():
     print("test evaluate block statement.")
     equals("{x=4}", {}, None, {"x": 4})
     equals("{x=4; y=3}", {}, None, {"x": 4, "y": 3})
-    equals("{x=4; y=3; y=1}", {}, None, {"x": 4, "y":1})
+    equals("{x=4; y=3; y=1}", {}, None, {"x": 4, "y": 1})
+    equals("{x=3; y=0; while (x>0) {x=x-1;y=y+1}}", {}, None, {"x": 0, "y": 3})
 
 
 if __name__ == "__main__":
@@ -222,5 +237,6 @@ if __name__ == "__main__":
     test_evaluate_relational_operators()
     test_evaluate_logical_operators()
     test_evaluate_if_statement()
+    test_evaluate_while_statement()
     test_evaluate_block_statement()
     print("done.")

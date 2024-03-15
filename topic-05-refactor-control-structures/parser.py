@@ -1,7 +1,7 @@
 """
 if_statement == "if" "(" logical_expression ")" statement (else statment)
 while_statment == "while" "(" logical_expression ")" statement
-block_statement == "{" statement { ";" statement } [";"] "}"
+block_statement = "{" {";"} [ statement { ";" {";"} statement } {";"} ] "}"
 statement = ( if_statement | while_statement | block_statement | assignment | expression )
 assignment = identifier "=" expression
 arithmetic_expression = term { ("+" | "-") term }
@@ -68,18 +68,25 @@ def parse_while_statement(tokens):
 
 
 def parse_block_statement(tokens):
-    # block_statement == "{" statement { ";" statement } [";"] "}"
+    # block_statement = "{" {";"} [ statement { ";" {";"} statement } {";"} ] "}"
     assert tokens[0]["tag"] == "{"
-    statement, tokens = parse_statement(tokens[1:])
-    node = {"tag": "block", "statement": statement}
+    tokens = tokens[1:]
+    node = {"tag": "block"}
     first_node = node
     while tokens[0]["tag"] == ";":
         tokens = tokens[1:]
-        if tokens[0]["tag"] != "}":
-            statement, tokens = parse_statement(tokens)
-            node["next"] = {"tag": "block", "statement": statement}
-            node = node["next"]
-    assert tokens[0]["tag"] == "}", str(tokens)
+    if tokens[0]["tag"] != "}":
+        statement, tokens = parse_statement(tokens)
+        node["statement"] = statement
+        while tokens[0]["tag"] == ";":
+            while tokens[0]["tag"] == ";":
+                tokens = tokens[1:]
+            if tokens[0]["tag"] != "}":
+                statement, tokens = parse_statement(tokens)
+                node["next"] = {"tag": "block", "statement": statement}
+                node = node["next"]
+            assert tokens[0]["tag"] in [";","}"]
+    assert tokens[0]["tag"] == "}"
     tokens = tokens[1:]
     return first_node, tokens
 
@@ -492,34 +499,36 @@ def test_while_statement():
 
 def test_block_statement():
     print("test block statement...")
-    tokens = tokenize("{x=1}")
-    ast = parse(tokens)
-    assert ast == {
-        "tag": "block",
-        "statement": {
-            "tag": "=",
-            "target": {"tag": "<identifier>", "value": "x"},
-            "value": {"tag": "<number>", "value": 1},
-        },
-    }
-    tokens = tokenize("{x=1;y=2}")
-    ast = parse(tokens)
-    assert ast == {
-        "tag": "block",
-        "statement": {
-            "tag": "=",
-            "target": {"tag": "<identifier>", "value": "x"},
-            "value": {"tag": "<number>", "value": 1},
-        },
-        "next": {
+    for code in ["{x=1}", "{x=1;}", "{x=1;;}", "{;;x=1;;}"]:
+        tokens = tokenize(code)
+        ast = parse(tokens)
+        assert ast == {
             "tag": "block",
             "statement": {
                 "tag": "=",
-                "target": {"tag": "<identifier>", "value": "y"},
-                "value": {"tag": "<number>", "value": 2},
+                "target": {"tag": "<identifier>", "value": "x"},
+                "value": {"tag": "<number>", "value": 1},
             },
-        },
-    }
+        }
+    for code in ["{x=1;y=2}", "{x=1;y=2;}", "{x=1;;y=2;}", "{;x=1;;y=2;}"]:
+        tokens = tokenize(code)
+        ast = parse(tokens)
+        assert ast == {
+            "tag": "block",
+            "statement": {
+                "tag": "=",
+                "target": {"tag": "<identifier>", "value": "x"},
+                "value": {"tag": "<number>", "value": 1},
+            },
+            "next": {
+                "tag": "block",
+                "statement": {
+                    "tag": "=",
+                    "target": {"tag": "<identifier>", "value": "y"},
+                    "value": {"tag": "<number>", "value": 2},
+                },
+            },
+        }
     tokens = tokenize("{x=1;y=2;z=3}")
     ast = parse(tokens)
     assert ast == {

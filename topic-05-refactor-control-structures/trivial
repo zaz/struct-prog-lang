@@ -65,11 +65,12 @@ def repl(eval):
                 break
 
 
-# dummy evaluation function
+# evaluation function
 def eval(code, environment):
-    tokens = tokenize(code)
+    # wrap code to allow multiple statements
+    tokens = tokenize("{" + code + "}")
     ast = parse(tokens)
-    result, environment = evaluate(ast, environment)
+    _, environment = evaluate(ast, environment)
     return environment
 
 if __name__ == "__main__":
