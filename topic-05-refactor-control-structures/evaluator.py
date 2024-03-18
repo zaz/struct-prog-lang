@@ -12,12 +12,10 @@ def evaluate_expression(ast, environment):
         assert type(ast["value"]) in [
             str
         ], f"unexpected ast identifer value {ast['value']} type is a {type(ast['value'])}."
-        current_environment = environment
-        while current_environment:
-            if ast["value"] in current_environment:
-                return current_environment[ast["value"]], environment
-            current_environment = current_environment.get("$parent", None)
-        assert current_environment, f"undefined identifier {ast['value']} in expression"
+        assert (
+            ast["value"] in environment
+        ), f"undefined identifier {ast['value']} in expression"
+        return environment[ast["value"]], environment
 
     # unary operations
     if ast["tag"] == "negate":
@@ -137,8 +135,6 @@ def test_evaluate_single_value():
 def test_evaluate_single_identifier():
     print("test evaluate single identifier")
     equals("x", {"x": 3}, 3)
-    equals("y", {"x": 3, "$parent": {"y": 4}}, 4)
-    equals("z", {"x": 3, "$parent": {"y": 4, "$parent": {"z": 5}}}, 5)
 
 
 def test_evaluate_simple_assignment():
