@@ -85,7 +85,7 @@ def parse_block_statement(tokens):
                 statement, tokens = parse_statement(tokens)
                 node["next"] = {"tag": "block", "statement": statement}
                 node = node["next"]
-            assert tokens[0]["tag"] in [";","}"]
+            assert tokens[0]["tag"] in [";", "}"]
     assert tokens[0]["tag"] == "}"
     tokens = tokens[1:]
     return first_node, tokens
