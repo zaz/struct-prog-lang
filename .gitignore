@@ -1,5 +1,7 @@
 __pycache__*
 .pytest*
 *.pyc
+*,cover
 __notes__
 .DS*
+.coverage
