@@ -311,10 +311,9 @@ def parse_function_expression(tokens):
     function_expression = "function" "(" [ identifier_list ] ")" block_statement;
     """
     assert tokens[0]["tag"] == "function"
-    tokens = tokens[1:]
-    if tokens[0]["tag"] != "(":
-        raise Exception(f"Expected '(': {tokens[0]}")
-    arguments, tokens = parse_identifier_list(tokens[1:])
+    if tokens[1]["tag"] != "(":
+        raise Exception(f"Expected '(': {tokens}")
+    arguments, tokens = parse_identifier_list(tokens[2:])
     if tokens[0]["tag"] != ")":
         raise Exception(f"Expected '(': {tokens[0]}")
     body, tokens = parse_block_statement(tokens[1:])
@@ -729,6 +728,7 @@ def parse_function_statement(tokens):
     # parse the rewritten token stream as an assignment
     return parse_assignment(tokens)
 
+
 def test_parse_function_statement():
     """
     function_statement = "function" <identifier> "(" [ identifier_list ] ")" block_statement;
@@ -751,7 +751,8 @@ def parse_statement(tokens):
     if tag == "while":
         return parse_while_statement(tokens)
     if tag == "function":
-        return parse_function_statement(tokens)
+        if tokens[1]["tag"] == "<identifier>":
+            return parse_function_statement(tokens)
     if tag == "return":
         return parse_return_statement(tokens)
     if tag == "{":
@@ -778,16 +779,36 @@ def test_parse_statement():
         parse_statement(t("while(1){x=3}"))[0]
         == parse_while_statement(t("while(1){x=3}"))[0]
     )
-    # TODO: function_statement (eventually, syntactic sugar)
-    # TODO: return statement
+    # function_statement (syntactic sugar)
+    assert (
+        parse_statement(t("function sq(x) {return x}"))[0]
+        == parse_function_statement(t("function sq(x) {return x}"))[0]
+    )
+    # verify standalone function expressions
+    assert (
+        parse_statement(t("function(x) {return x}"))[0]
+        == parse_expression(t("function(x) {return x}"))[0]
+    )
+    # assert ast == {
+    #     "tag": "function",
+    #     "arguments": {"tag": "<identifier>", "value": "x"},
+    #     "body": {
+    #         "tag": "block",
+    #         "statement": {
+    #             "tag": "return",
+    #             "value": {"tag": "<identifier>", "value": "x"},
+    #         },
+    #     },
+    # }
+    # return statement
     assert (
         parse_statement(t("return 22;"))[0]
         == parse_return_statement(t("return 22;"))[0]
     )
     # assignment statements
-    parse_statement(t("x=5+3"))[0] == parse_assignment(t("x=5+3"))[0]
+    assert parse_statement(t("x=5+3"))[0] == parse_assignment(t("x=5+3"))[0]
     # expression statements
-    parse_statement(t("5+3"))[0] == parse_expression(t("x=5+3"))[0]
+    assert parse_statement(t("5+3"))[0] == parse_expression(t("5+3"))[0]
 
 
 def parse(tokens):
