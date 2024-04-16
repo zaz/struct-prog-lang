@@ -107,7 +107,7 @@ def parse_arithmetic_term(tokens):
     return node, tokens
 
 
-def test_parse_term():
+def test_parse_arithmetic_term():
     """
     arithmetic_term = arithmetic_factor { ("*" | "/") arithmetic_factor };
     """
@@ -315,7 +315,7 @@ def parse_function_expression(tokens):
         raise Exception(f"Expected '(': {tokens}")
     arguments, tokens = parse_identifier_list(tokens[2:])
     if tokens[0]["tag"] != ")":
-        raise Exception(f"Expected '(': {tokens[0]}")
+        raise Exception(f"Expected ')': {tokens}")
     body, tokens = parse_block_statement(tokens[1:])
     return {"tag": "function", "arguments": arguments, "body": body}, tokens
 
@@ -868,7 +868,7 @@ def test_format():
 if __name__ == "__main__":
     for f in [
         test_parse_arithmetic_factor,
-        test_parse_term,
+        test_parse_arithmetic_term,
         test_parse_arithmetic_expression,
         test_parse_relational_expression,
         test_parse_logical_factor,
@@ -898,7 +898,7 @@ if __name__ == "__main__":
     test_format()
     print("done.")
 
-
+#TODO: Include all these extra tests if necessary
 # from tokenizer import tokenize
 
 

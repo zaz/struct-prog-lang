@@ -19,6 +19,9 @@ def evaluate_expression(ast, environment):
             current_environment = current_environment.get("$parent", None)
         assert current_environment, f"undefined identifier {ast['value']} in expression"
 
+    if ast["tag"] == "function":
+        return ast, environment
+
     # unary operations
     if ast["tag"] == "negate":
         value, environment = evaluate(ast["value"], environment)
@@ -111,6 +114,7 @@ def evaluate_statement(ast, environment):
 
 
 def evaluate(ast, environment):
+    print(ast)
     return evaluate_statement(ast, environment)
 
 
@@ -122,11 +126,15 @@ def equals(code, environment, expected_result, expected_environment=None):
     result, environment = evaluate(parse(tokenize(code)), environment)
     assert (
         result == expected_result
-    ), f"ERROR: When executing {[code]}, expected {[expected_result]}, got {[result]}."
+    ), f"ERROR: When executing {[code]}, expected\n {[expected_result]},\n got \numeric{[result]}."
     if expected_environment:
         assert (
             environment == expected_environment
-        ), f"ERROR: When executing {[code]}, expected {[expected_environment]}, got {[environment]}."
+        ), f"""
+        ERROR: When executing 
+        {[code]}, 
+        expected
+        {[expected_environment]},\n got \n{[environment]}."
 
 
 def test_evaluate_single_value():
@@ -217,26 +225,135 @@ def test_evaluate_while_statement():
 
 def test_evaluate_block_statement():
     print("test evaluate block statement.")
-    equals("{x=4}", {}, None, {"x": 4})
-    equals("{x=4; y=3}", {}, None, {"x": 4, "y": 3})
-    equals("{x=4; y=3; y=1}", {}, None, {"x": 4, "y": 1})
+    equals("{x=4}", {}, 4, {"x": 4})
+    equals("{x=4; y=3}", {}, 3, {"x": 4, "y": 3})
+    equals("{x=4; y=3; y=1}", {}, 1, {"x": 4, "y": 1})
     equals("{x=3; y=0; while (x>0) {x=x-1;y=y+1}}", {}, None, {"x": 0, "y": 3})
+
+
+def debug_equals(code, environment, expected_result, expected_environment=None):
+    tokens = tokenize(code)
+    ast = parse(tokens)
+    result, environment = evaluate(ast, environment)
+    assert (
+        result == expected_result
+    ), f"ERROR: When executing {[code]}, expected {[expected_result]}, got {[result]}."
+    if expected_environment:
+        assert (
+            environment == expected_environment
+        ), f"ERROR: When executing {[code]}, expected {[expected_environment]}, got {[environment]}."
+
+
+def test_evaluate_function_expression():
+    print("test evaluate function_expression.")
+    equals(
+        "function(x) {return x}",
+        None,
+        {
+            "tag": "function",
+            "arguments": {"tag": "<identifier>", "value": "x"},
+            "body": {
+                "tag": "block",
+                "statement": {
+                    "tag": "return",
+                    "value": {"tag": "<identifier>", "value": "x"},
+                },
+            },
+        },
+        None,
+    )
+    equals(
+        "f = function(x) {return x}",
+        {},
+        None,
+        {
+            "f": {
+                "tag": "function",
+                "arguments": {"tag": "<identifier>", "value": "x"},
+                "body": {
+                    "tag": "block",
+                    "statement": {
+                        "tag": "return",
+                        "value": {"tag": "<identifier>", "value": "x"},
+                    },
+                },
+            },
+        },
+    )
+
+
+def test_evaluate_function_statement():
+    print("test evaluate function_statement.")
+    equals(
+        "function f(x) {return x}",
+        {},
+        None,
+        {
+            "f": {
+                "tag": "function",
+                "arguments": {"tag": "<identifier>", "value": "x"},
+                "body": {
+                    "tag": "block",
+                    "statement": {
+                        "tag": "return",
+                        "value": {"tag": "<identifier>", "value": "x"},
+                    },
+                },
+            },
+        },
+    )
+
+
+def test_evaluate_function_call():
+    print("test evaluate function call.")
+
+    # equals(
+    #     """
+    #     {x=3; y=4}; function f(x) {return x+x};
+    #     """,
+    #     {},
+    #     None,
+    #     {"x": 3, "y": 4},
+    # )
+
+    equals(
+        "{function f(x) {return x+x}; z=1}",
+        {},
+        None,
+        {
+            "f": {
+                "tag": "function",
+                "arguments": {"tag": "<identifier>", "value": "x"},
+                "body": {
+                    "tag": "block",
+                    "statement": {
+                        "tag": "return",
+                        "value": {"tag": "<identifier>", "value": "x"},
+                    },
+                },
+            },
+            "z": 1,
+        },
+    )
 
 
 if __name__ == "__main__":
     print("test evaluator...")
-    test_evaluate_single_value()
-    test_evaluate_single_identifier()
-    test_evaluate_simple_addition()
-    test_evaluate_simple_assignment()
-    test_evaluate_complex_expression()
-    test_evaluate_subtraction()
-    test_evaluate_division()
-    test_evaluate_division_by_zero()
-    test_evaluate_unary_operators()
-    test_evaluate_relational_operators()
-    test_evaluate_logical_operators()
-    test_evaluate_if_statement()
-    test_evaluate_while_statement()
-    test_evaluate_block_statement()
+    # test_evaluate_single_value()
+    # test_evaluate_single_identifier()
+    # test_evaluate_simple_addition()
+    # test_evaluate_simple_assignment()
+    # test_evaluate_complex_expression()
+    # test_evaluate_subtraction()
+    # test_evaluate_division()
+    # test_evaluate_division_by_zero()
+    # test_evaluate_unary_operators()
+    # test_evaluate_relational_operators()
+    # test_evaluate_logical_operators()
+    # test_evaluate_if_statement()
+    # test_evaluate_while_statement()
+    # test_evaluate_block_statement()
+    # test_evaluate_function_expression()
+    # test_evaluate_function_statement()
+    test_evaluate_function_call()
     print("done.")
