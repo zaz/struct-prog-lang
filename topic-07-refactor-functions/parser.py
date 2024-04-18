@@ -8,17 +8,18 @@ relational_expression = arithmetic_expression { ("<" | ">" | "<=" | ">=" | "==" 
 logical_factor = relational_expression | "!" logical_factor;
 logical_term = logical_factor { "&&" logical_factor };
 logical_expression = logical_term { "||" logical_term };
-function_expression = "function" "(" [ identifier_list ] ")" block_statement;
+function_expression = "function" identifier_list block_statement;
 expression = logical_expression;
-identifier_list = <identifier> { "," <identifier> };
-expression_list = expression { "," expression };
+identifier_list = "(" [ <identifier> { "," <identifier> ] } ")";
+expression_list = "(" [ expression { "," expression } ] ")";
 assignment = <identifier> "=" expression;
 block_statement = "{" {";"} [ statement { ";" {";"} statement } {";"} ] "}";
 if_statement = "if" "(" expression ")" statement "else" statement;
 while_statement = "while" "(" expression ")" statement;
 return_statement = "return" [ expression ];
-function_statement = "function" <identifier> "(" [ identifier_list ] ")" block_statement;
-statement = block_statement | if_statement | while_statement |  function_statement | return_statement |  assignment | expression;
+print_statement = "print" expression_list;
+function_statement = "function" <identifier> identifier_list block_statement;
+statement = block_statement | if_statement | while_statement |  function_statement | return_statement | print_statement | assignment | expression;
 program = statement
 """
 
@@ -43,7 +44,7 @@ def t(code):
 
 def parse_arithmetic_factor(tokens):
     """
-    arithmetic_factor = <number> | <boolean> | <identifier> [ "(" expression_list ")" ] | "(" expression ")" | "-" arithmetic_factor | function_expression;
+    arithmetic_factor = <number> | <boolean> | <identifier> [ expression_list ] | "(" expression ")" | "-" arithmetic_factor | function_expression;
     """
     token = tokens[0]
     tag = token["tag"]
@@ -59,7 +60,7 @@ def parse_arithmetic_factor(tokens):
         return node, tokens
     if tag == "(":
         node, tokens = parse_relational_expression(tokens[1:])
-        if tokens and tokens[0]["tag"] != ")":
+        if tokens[0]["tag"] != ")":
             raise Exception("Expected ')'")
         return node, tokens[1:]
     if tag == "-":
@@ -80,15 +81,39 @@ def test_parse_arithmetic_factor():
     assert parse_arithmetic_factor(t("true"))[0] == {"tag": "<boolean>", "value": 1}
     assert parse_arithmetic_factor(t("false"))[0] == {"tag": "<boolean>", "value": 0}
     assert parse_arithmetic_factor(t("x"))[0] == {"tag": "<identifier>", "value": "x"}
-    # TODO assert parse_arithmetic_factor(t("x()"))[0] ==
-    # TODO assert parse_arithmetic_factor(t("x(1)"))[0] ==
-    # TODO assert parse_arithmetic_factor(t("x(1,2)"))[0] ==
-    # TODO assert parse_arithmetic_factor(t("(1)"))[0] ==
-    # TODO assert parse_arithmetic_factor(t("(1+2)"))[0] ==
-    # ast = parse_arithmetic_factor(t("x(1)"))[0]
-    # print(ast)
-    # ast = parse_arithmetic_factor(t("-1"))[0]
-    # print(ast)
+    ast = parse_arithmetic_factor(t("x()"))[0]
+    assert ast == {
+        "tag": "<identifier>",
+        "value": "x",
+        "arguments": {"tag": "expression_list"},
+    }
+    ast = parse_arithmetic_factor(t("x(1)"))[0]
+    assert ast == {
+        "tag": "<identifier>",
+        "value": "x",
+        "arguments": {
+            "tag": "expression_list",
+            "expressions": {"tag": "<number>", "value": 1},
+        },
+    }
+    ast = parse_arithmetic_factor(t("x(1,2+3)"))[0]
+    assert ast == {
+        "tag": "<identifier>",
+        "value": "x",
+        "arguments": {
+            "tag": "expression_list",
+            "expressions": {
+                "tag": "<number>",
+                "value": 1,
+                "next": {
+                    "tag": "+",
+                    "left": {"tag": "<number>", "value": 2},
+                    "right": {"tag": "<number>", "value": 3},
+                },
+            },
+        },
+    }
+
     assert parse_arithmetic_factor(t("-1"))[0] == {
         "tag": "negate",
         "value": {"tag": "<number>", "value": 1},
@@ -308,26 +333,25 @@ def test_parse_logical_expression():
 
 def parse_function_expression(tokens):
     """
-    function_expression = "function" "(" [ identifier_list ] ")" block_statement;
+    function_expression = "function" identifier_list block_statement;
     """
     assert tokens[0]["tag"] == "function"
-    if tokens[1]["tag"] != "(":
-        raise Exception(f"Expected '(': {tokens}")
-    arguments, tokens = parse_identifier_list(tokens[2:])
-    if tokens[0]["tag"] != ")":
-        raise Exception(f"Expected ')': {tokens}")
-    body, tokens = parse_block_statement(tokens[1:])
-    return {"tag": "function", "arguments": arguments, "body": body}, tokens
+    parameters, tokens = parse_identifier_list(tokens[1:])
+    body, tokens = parse_block_statement(tokens)
+    return {"tag": "function", "parameters": parameters, "body": body}, tokens
 
 
 def test_parse_function_expression():
     """
-    function_expression = "function" "(" [ identifier_list ] ")" block_statement;
+    function_expression = "function" identifier_list block_statement;
     """
     ast = parse_function_expression(t("function(x) {return x*x}"))[0]
     assert ast == {
         "tag": "function",
-        "arguments": {"tag": "<identifier>", "value": "x"},
+        "parameters": {
+            "tag": "identifier_list",
+            "identifiers": {"tag": "<identifier>", "value": "x"},
+        },
         "body": {
             "tag": "block",
             "statement": {
@@ -359,95 +383,105 @@ def test_parse_expression():
 
 def parse_identifier_list(tokens):
     """
-    identifier_list = <identifier> { "," <identifier> };
+    identifier_list = "(" [ <identifier> { "," <identifier> ] } ")";
     """
-    assert tokens[0]["tag"] == "<identifier>"
-    node = {"tag": "<identifier>", "value": tokens[0]["value"]}
+    assert tokens[0]["tag"] == "("
     tokens = tokens[1:]
-    first_node = node
-    while tokens[0]["tag"] == ",":
-        tokens = tokens[1:]
+    first_node = None
+    if tokens[0]["tag"] != ")":
         assert tokens[0]["tag"] == "<identifier>"
-        node["next"] = {"tag": "<identifier>", "value": tokens[0]["value"]}
+        node = {"tag": "<identifier>", "value": tokens[0]["value"]}
         tokens = tokens[1:]
-        node = node["next"]
-    return first_node, tokens
+        first_node = node
+        while tokens[0]["tag"] == ",":
+            tokens = tokens[1:]
+            assert tokens[0]["tag"] == "<identifier>"
+            node["next"] = {"tag": "<identifier>", "value": tokens[0]["value"]}
+            tokens = tokens[1:]
+            node = node["next"]
+    assert tokens[0]["tag"] == ")"
+    tokens = tokens[1:]
+    if first_node:
+        return {"tag": "identifier_list", "identifiers": first_node}, tokens
+    else:
+        return {"tag": "identifier_list"}, tokens
 
 
 def test_parse_identifier_list():
     """
-    identifier_list = <identifier> { "," <identifier> };
+    identifier_list = "(" [ <identifier> { "," <identifier> ] } ")";
     """
-    tokens = tokenize("a,b,c")
-    tokens.append({"tag": None})
+    tokens = tokenize("()")
+    ast, tokens = parse_identifier_list(tokens)
+    assert ast == {'tag': 'identifier_list'}
+    tokens = tokenize("(x)")
     ast, tokens = parse_identifier_list(tokens)
     assert ast == {
-        "tag": "<identifier>",
-        "value": "a",
-        "next": {
+        "tag": "identifier_list",
+        "identifiers": {"tag": "<identifier>", "value": "x"},
+    }
+    tokens = tokenize("(x,y,z)")
+    ast, tokens = parse_identifier_list(tokens)
+    assert ast == {
+        "tag": "identifier_list",
+        "identifiers": {
             "tag": "<identifier>",
-            "value": "b",
-            "next": {"tag": "<identifier>", "value": "c"},
+            "value": "x",
+            "next": {
+                "tag": "<identifier>",
+                "value": "y",
+                "next": {"tag": "<identifier>", "value": "z"},
+            },
         },
     }
-    tokens = tokenize("a")
-    tokens.append({"tag": None})
-    ast, tokens = parse_identifier_list(tokens)
-    assert ast == {"tag": "<identifier>", "value": "a"}
 
 
 def parse_expression_list(tokens):
     """
-    expression_list = expression { "," expression };
+    expression_list = "(" [ expression { "," expression } ] ")";
     """
-    node, tokens = parse_expression(tokens)
-    first_node = node
-    while tokens[0]["tag"] == ",":
-        tokens = tokens[1:]
-        node["next"], tokens = parse_expression(tokens)
-        node = node["next"]
-    return first_node, tokens
+    assert tokens[0]["tag"] == "("
+    tokens = tokens[1:]
+    first_node = None
+    if tokens[0]["tag"] != ")":
+        node, tokens = parse_expression(tokens)
+        first_node = node
+        while tokens[0]["tag"] == ",":
+            tokens = tokens[1:]
+            node["next"], tokens = parse_expression(tokens)
+            node = node["next"]
+    assert tokens[0]["tag"] == ")"
+    tokens = tokens[1:]
+    if first_node:
+        return {"tag": "expression_list", "expressions": first_node}, tokens
+    else:
+        return {"tag": "expression_list"}, tokens
 
 
 def test_parse_expression_list():
     """
-    expression_list = expression { "," expression };
+    expression_list = "(" [ expression { "," expression } ] ")";
     """
-    tokens = tokenize("1")
-    tokens.append({"tag": None})
+    tokens = tokenize("()")
     ast, tokens = parse_expression_list(tokens)
-    assert ast == {"tag": "<number>", "value": 1}
-    tokens = tokenize("1,2,3,4")
-    tokens.append({"tag": None})
+    assert ast == {"tag": "expression_list"}
+    tokens = tokenize("(1)")
     ast, tokens = parse_expression_list(tokens)
     assert ast == {
-        "tag": "<number>",
-        "value": 1,
-        "next": {
+        "tag": "expression_list",
+        "expressions": {"tag": "<number>", "value": 1},
+    }
+    tokens = tokenize("(1,2,3)")
+    ast, tokens = parse_expression_list(tokens)
+    assert ast == {
+        "tag": "expression_list",
+        "expressions": {
             "tag": "<number>",
-            "value": 2,
+            "value": 1,
             "next": {
                 "tag": "<number>",
-                "value": 3,
-                "next": {"tag": "<number>", "value": 4},
-            },
-        },
-    }
-    tokens = tokenize("1,(2+3),4*5,-6")
-    tokens.append({"tag": None})
-    ast, tokens = parse_expression_list(tokens)
-    assert ast == {
-        "tag": "<number>",
-        "value": 1,
-        "next": {
-            "tag": "+",
-            "left": {"tag": "<number>", "value": 2},
-            "right": {"tag": "<number>", "value": 3},
-            "next": {
-                "tag": "*",
-                "left": {"tag": "<number>", "value": 4},
-                "right": {"tag": "<number>", "value": 5},
-                "next": {"tag": "negate", "value": {"tag": "<number>", "value": 6}},
+                "value": 2,
+                "next": {"tag": "<number>", "value": 3},
             },
         },
     }
@@ -710,9 +744,51 @@ def test_parse_return_statement():
     assert ast == {"tag": "return", "value": {"tag": "<number>", "value": 5}}
 
 
+def parse_print_statement(tokens):
+    """
+    print_statement = "print" expression_list;
+    """
+    assert tokens[0]["tag"] == "print"
+    tokens = tokens[1:]
+    arguments, tokens = parse_expression_list(tokens)
+    return {"tag": "print", "arguments": arguments}, tokens
+
+
+def test_parse_print_statement():
+    """
+    print_statement = "print" expression_list;
+    """
+    ast = parse_print_statement(t("print()"))[0]
+    assert ast == {"tag": "print", "arguments": {"tag": "expression_list"}}
+    ast = parse_print_statement(t("print(1)"))[0]
+    assert ast == {
+        "tag": "print",
+        "arguments": {
+            "tag": "expression_list",
+            "expressions": {"tag": "<number>", "value": 1},
+        },
+    }
+    ast = parse_print_statement(t("print(1,2+3)"))[0]
+    {
+        "tag": "print",
+        "arguments": {
+            "tag": "expression_list",
+            "expressions": {
+                "tag": "<number>",
+                "value": 1,
+                "next": {
+                    "tag": "+",
+                    "left": {"tag": "<number>", "value": 2},
+                    "right": {"tag": "<number>", "value": 3},
+                },
+            },
+        },
+    }
+
+
 def parse_function_statement(tokens):
     """
-    function_statement = "function" <identifier> "(" [ identifier_list ] ")" block_statement;
+    function_statement = "function" <identifier> identifier_list block_statement;
     """
     # rewrites the token stream as an assignment
     assert tokens[0]["tag"] == "function"
@@ -731,7 +807,7 @@ def parse_function_statement(tokens):
 
 def test_parse_function_statement():
     """
-    function_statement = "function" <identifier> "(" [ identifier_list ] ")" block_statement;
+    function_statement = "function" <identifier> identifier_list block_statement;
     """
     assignment = t("sq = function(x) {return x*x;}")
     ast_assignment = parse_assignment(assignment)[0]
@@ -755,6 +831,8 @@ def parse_statement(tokens):
             return parse_function_statement(tokens)
     if tag == "return":
         return parse_return_statement(tokens)
+    if tag == "return":
+        return parse_print_statement(tokens)
     if tag == "{":
         return parse_block_statement(tokens)
     if tag == "<identifier>":
@@ -766,7 +844,7 @@ def parse_statement(tokens):
 
 def test_parse_statement():
     """
-    statement = block_statement | if_statement | while_statement |  function_statement | return_statement |  assignment | expression;
+    statement = block_statement | if_statement | while_statement |  function_statement | return_statement | print_statement | assignment | expression;
     """
     # block statement
     assert (
@@ -883,22 +961,23 @@ if __name__ == "__main__":
         test_parse_if_statement,
         test_parse_while_statement,
         test_parse_return_statement,
+        test_parse_print_statement,
         test_parse_function_statement,
         test_parse_statement,
         test_parse,
     ]:
         rule = f.__doc__.strip()
         print("testing", rule.split(" = ")[0])
-        assert rule in grammar, f"rule [[[{rule}]]] not in grammar."
+        assert rule in grammar, f"rule [[[ {rule} ]]] not in grammar."
         grammar = grammar.replace(rule + "\n", "")
         f()
     if grammar.strip() != "":
-        print(f"Untested grammar = [[[{grammar}]]]")
+        print(f"Untested grammar = [[[ {grammar} ]]]")
     print("testing format(ast)...")
     test_format()
     print("done.")
 
-#TODO: Include all these extra tests if necessary
+# TODO: Include all these extra tests if necessary
 # from tokenizer import tokenize
 
 
