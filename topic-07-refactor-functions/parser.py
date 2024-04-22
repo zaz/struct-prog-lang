@@ -2,7 +2,7 @@ from tokenizer import tokenize
 
 grammar = """
 arithmetic_factor = <number> | <boolean> | <identifier> [ "(" expression_list ")" ] | "(" expression ")" | "-" arithmetic_factor | function_expression;
-arithmetic_term = arithmetic_factor { ("*" | "/") arithmetic_factor };
+arithmetic_term = arithmetic_factor { ("*" | "/" | "%") arithmetic_factor };
 arithmetic_expression = arithmetic_term { ("+" | "-") arithmetic_term };
 relational_expression = arithmetic_expression { ("<" | ">" | "<=" | ">=" | "==" | "!=") arithmetic_expression };
 logical_factor = relational_expression | "!" logical_factor;
@@ -97,10 +97,10 @@ def test_parse_arithmetic_factor():
 
 def parse_arithmetic_term(tokens):
     """
-    arithmetic_term = arithmetic_factor { ("*" | "/") arithmetic_factor };
+    arithmetic_term = arithmetic_factor { ("*" | "/" | "%") arithmetic_factor };
     """
     node, tokens = parse_arithmetic_factor(tokens)
-    while tokens[0]["tag"] in ["*", "/"]:
+    while tokens[0]["tag"] in ["*", "/", "%"]:
         tag = tokens[0]["tag"]
         next_node, tokens = parse_arithmetic_factor(tokens[1:])
         node = {"tag": tag, "left": node, "right": next_node}
@@ -109,7 +109,7 @@ def parse_arithmetic_term(tokens):
 
 def test_parse_arithmetic_term():
     """
-    arithmetic_term = arithmetic_factor { ("*" | "/") arithmetic_factor };
+    arithmetic_term = arithmetic_factor { ("*" | "/" | "%") arithmetic_factor };
     """
     assert parse_arithmetic_term(t("x"))[0] == {"tag": "<identifier>", "value": "x"}
     assert parse_arithmetic_term(t("x*y"))[0] == {
@@ -124,6 +124,20 @@ def test_parse_arithmetic_term():
     }
     assert parse_arithmetic_term(t("x*y/z"))[0] == {
         "tag": "/",
+        "left": {
+            "tag": "*",
+            "left": {"tag": "<identifier>", "value": "x"},
+            "right": {"tag": "<identifier>", "value": "y"},
+        },
+        "right": {"tag": "<identifier>", "value": "z"},
+    }
+    assert parse_arithmetic_term(t("x%y"))[0] == {
+        "tag": "%",
+        "left": {"tag": "<identifier>", "value": "x"},
+        "right": {"tag": "<identifier>", "value": "y"},
+    }
+    assert parse_arithmetic_term(t("x*y%z"))[0] == {
+        "tag": "%",
         "left": {
             "tag": "*",
             "left": {"tag": "<identifier>", "value": "x"},

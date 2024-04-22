@@ -50,6 +50,8 @@ def evaluate_expression(ast, environment):
         if right_value == 0:
             raise Exception("Division by zero")
         return left_value / right_value, environment
+    elif ast["tag"] == "%":
+        return left_value % right_value, environment
     elif ast["tag"] == "*":
         return left_value * right_value, environment
     elif ast["tag"] == "<":
@@ -174,6 +176,19 @@ def test_evaluate_division():
     print("test evaluate division.")
     equals("15/5", {}, 3)
 
+def test_evaluate_modulo():
+    print("test evaluate modulo.")
+    equals("3%3", {}, 0)
+    equals("7*2 % 3", {}, 2)
+    equals("13 + 3 % 3 * 2", {}, 13)
+    equals("x = 10 % 3", {"x": 1}, None)  # given test case
+
+    # Edge cases:
+    # Note that in JavaScript, the sign matches the numerator, while in Python
+    # it matches the divisor. So JavaScript would return 1 for the below, but
+    # 3%-2 is a very unusual call to make. Usually you would just use -(3%2)
+    equals("3%-2", {}, -1)
+    equals("-2%3", {}, 1)
 
 def test_evaluate_unary_operators():
     print("test evaluate unary operators.")
@@ -346,6 +361,7 @@ if __name__ == "__main__":
     # test_evaluate_complex_expression()
     # test_evaluate_subtraction()
     # test_evaluate_division()
+    test_evaluate_modulo()
     # test_evaluate_division_by_zero()
     # test_evaluate_unary_operators()
     # test_evaluate_relational_operators()
