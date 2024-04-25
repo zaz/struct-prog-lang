@@ -22,11 +22,37 @@ def evaluate_expression(ast, environment):
     if ast["tag"] == "function":
         return ast, environment
 
+    if ast["tag"] == "<function_call>":
+        assert "identifier" in ast
+        assert "arguments" in ast
+        function, environment = evaluate_expression(ast["identifier"], environment)
+        assert function["tag"] == "function"
+        assert "parameters" in function
+        assert "body" in function
+        # match the parameters to arguments
+        local_environment = {}
+        parameters = function["parameters"]
+        arguments = ast["arguments"]
+        while parameters:
+            assert arguments
+            print(parameters, arguments)
+            print(parameters["value"])
+            arg, environment = evaluate(arguments, environment)
+            local_environment[parameters["value"]] = arg
+            parameters = parameters.get("next", None)
+            arguments = arguments.get("next", None)
+        assert parameters == None
+        assert arguments == None
+        local_environment["$parent"] = environment
+        result, local_environment = evaluate(function["body"], local_environment)
+        return result, environment
+
     # unary operations
     if ast["tag"] == "negate":
         value, environment = evaluate(ast["value"], environment)
         return -value, environment
-    elif ast["tag"] == "not":
+
+    if ast["tag"] == "not":
         value, environment = evaluate(ast["value"], environment)
         if value:
             value = 0
@@ -36,40 +62,62 @@ def evaluate_expression(ast, environment):
         return value, environment
 
     # binary operations
-    left_value, environment = evaluate(ast["left"], environment)
-    right_value, environment = evaluate(ast["right"], environment)
-
     if ast["tag"] == "+":
+        left_value, environment = evaluate(ast["left"], environment)
+        right_value, environment = evaluate(ast["right"], environment)
         return left_value + right_value, environment
-    elif ast["tag"] == "-":
+    if ast["tag"] == "-":
+        left_value, environment = evaluate(ast["left"], environment)
+        right_value, environment = evaluate(ast["right"], environment)
         return left_value - right_value, environment
-    elif ast["tag"] == "*":
+    if ast["tag"] == "*":
+        left_value, environment = evaluate(ast["left"], environment)
+        right_value, environment = evaluate(ast["right"], environment)
         return left_value * right_value, environment
-    elif ast["tag"] == "/":
+    if ast["tag"] == "/":
+        left_value, environment = evaluate(ast["left"], environment)
+        right_value, environment = evaluate(ast["right"], environment)
         # Add error handling for division by zero
         if right_value == 0:
             raise Exception("Division by zero")
         return left_value / right_value, environment
-    elif ast["tag"] == "*":
+    if ast["tag"] == "*":
+        left_value, environment = evaluate(ast["left"], environment)
+        right_value, environment = evaluate(ast["right"], environment)
         return left_value * right_value, environment
-    elif ast["tag"] == "<":
+    if ast["tag"] == "<":
+        left_value, environment = evaluate(ast["left"], environment)
+        right_value, environment = evaluate(ast["right"], environment)
         return int(left_value < right_value), environment
-    elif ast["tag"] == ">":
+    if ast["tag"] == ">":
+        left_value, environment = evaluate(ast["left"], environment)
+        right_value, environment = evaluate(ast["right"], environment)
         return int(left_value > right_value), environment
-    elif ast["tag"] == "<=":
+    if ast["tag"] == "<=":
+        left_value, environment = evaluate(ast["left"], environment)
+        right_value, environment = evaluate(ast["right"], environment)
         return int(left_value <= right_value), environment
-    elif ast["tag"] == ">=":
+    if ast["tag"] == ">=":
+        left_value, environment = evaluate(ast["left"], environment)
+        right_value, environment = evaluate(ast["right"], environment)
         return int(left_value >= right_value), environment
-    elif ast["tag"] == "==":
+    if ast["tag"] == "==":
+        left_value, environment = evaluate(ast["left"], environment)
+        right_value, environment = evaluate(ast["right"], environment)
         return int(left_value == right_value), environment
-    elif ast["tag"] == "!=":
+    if ast["tag"] == "!=":
+        left_value, environment = evaluate(ast["left"], environment)
+        right_value, environment = evaluate(ast["right"], environment)
         return int(left_value != right_value), environment
-    elif ast["tag"] == "&&":
+    if ast["tag"] == "&&":
+        left_value, environment = evaluate(ast["left"], environment)
+        right_value, environment = evaluate(ast["right"], environment)
         return int(left_value and right_value), environment
-    elif ast["tag"] == "||":
+    if ast["tag"] == "||":
+        left_value, environment = evaluate(ast["left"], environment)
+        right_value, environment = evaluate(ast["right"], environment)
         return int(left_value or right_value), environment
-    else:
-        raise Exception(f"Unknown operation: {ast['tag']}")
+    raise Exception(f"Unknown operation: {ast['tag']}")
 
 
 def evaluate_statement(ast, environment):
@@ -110,11 +158,19 @@ def evaluate_statement(ast, environment):
             condition, environment = evaluate_expression(ast["condition"], environment)
         return None, environment
 
+    if ast["tag"] == "print":
+        argument = ast.get("arguments", None)
+        while argument:
+            value, environment = evaluate_expression(argument, environment)
+            print(value, end=" ")
+            argument = argument.get("next", None)
+        print()
+        return None, environment
+
     return evaluate_expression(ast, environment)
 
 
 def evaluate(ast, environment):
-    print(ast)
     return evaluate_statement(ast, environment)
 
 
@@ -126,7 +182,12 @@ def equals(code, environment, expected_result, expected_environment=None):
     result, environment = evaluate(parse(tokenize(code)), environment)
     assert (
         result == expected_result
-    ), f"ERROR: When executing {[code]}, expected\n {[expected_result]},\n got \numeric{[result]}."
+    ), f"""ERROR: When executing-- 
+    {[code]},
+    --expected--
+    {[expected_result]},
+    --got--
+    {[result]}."""
     if expected_environment:
         assert (
             environment == expected_environment
@@ -134,7 +195,8 @@ def equals(code, environment, expected_result, expected_environment=None):
         ERROR: When executing 
         {[code]}, 
         expected
-        {[expected_environment]},\n got \n{[environment]}."
+        {[expected_environment]},\n got \n{[environment]}.
+        """
 
 
 def test_evaluate_single_value():
@@ -225,23 +287,10 @@ def test_evaluate_while_statement():
 
 def test_evaluate_block_statement():
     print("test evaluate block statement.")
-    equals("{x=4}", {}, 4, {"x": 4})
-    equals("{x=4; y=3}", {}, 3, {"x": 4, "y": 3})
-    equals("{x=4; y=3; y=1}", {}, 1, {"x": 4, "y": 1})
+    equals("{x=4}", {}, None, {"x": 4})
+    equals("{x=4; y=3}", {}, None, {"x": 4, "y": 3})
+    equals("{x=4; y=3; y=1}", {}, None, {"x": 4, "y": 1})
     equals("{x=3; y=0; while (x>0) {x=x-1;y=y+1}}", {}, None, {"x": 0, "y": 3})
-
-
-def debug_equals(code, environment, expected_result, expected_environment=None):
-    tokens = tokenize(code)
-    ast = parse(tokens)
-    result, environment = evaluate(ast, environment)
-    assert (
-        result == expected_result
-    ), f"ERROR: When executing {[code]}, expected {[expected_result]}, got {[result]}."
-    if expected_environment:
-        assert (
-            environment == expected_environment
-        ), f"ERROR: When executing {[code]}, expected {[expected_environment]}, got {[environment]}."
 
 
 def test_evaluate_function_expression():
@@ -251,7 +300,7 @@ def test_evaluate_function_expression():
         None,
         {
             "tag": "function",
-            "arguments": {"tag": "<identifier>", "value": "x"},
+            "parameters": {"tag": "<identifier>", "value": "x"},
             "body": {
                 "tag": "block",
                 "statement": {
@@ -269,7 +318,7 @@ def test_evaluate_function_expression():
         {
             "f": {
                 "tag": "function",
-                "arguments": {"tag": "<identifier>", "value": "x"},
+                "parameters": {"tag": "<identifier>", "value": "x"},
                 "body": {
                     "tag": "block",
                     "statement": {
@@ -291,7 +340,7 @@ def test_evaluate_function_statement():
         {
             "f": {
                 "tag": "function",
-                "arguments": {"tag": "<identifier>", "value": "x"},
+                "parameters": {"tag": "<identifier>", "value": "x"},
                 "body": {
                     "tag": "block",
                     "statement": {
@@ -302,58 +351,49 @@ def test_evaluate_function_statement():
             },
         },
     )
+
+def test_evaluate_print_statement():
+    print("test evaluate print_statement.")
+    equals("print()", {}, None, None)
+    equals("print(1)", {}, None, None)
+    equals("print(1,2)", {}, None, None)
+    equals("print(1,2,3+4)", {}, None, None)
 
 
 def test_evaluate_function_call():
     print("test evaluate function call.")
-
-    # equals(
-    #     """
-    #     {x=3; y=4}; function f(x) {return x+x};
-    #     """,
-    #     {},
-    #     None,
-    #     {"x": 3, "y": 4},
-    # )
-
-    equals(
-        "{function f(x) {return x+x}; z=1}",
-        {},
-        None,
-        {
-            "f": {
-                "tag": "function",
-                "arguments": {"tag": "<identifier>", "value": "x"},
-                "body": {
-                    "tag": "block",
-                    "statement": {
-                        "tag": "return",
-                        "value": {"tag": "<identifier>", "value": "x"},
-                    },
-                },
-            },
-            "z": 1,
-        },
-    )
+    environment = {}
+    code = "{f = function() {print(1)}; f()}"
+    result, environment = evaluate(parse(tokenize(code)), environment)
+    code = "{f = function() {print(1+2*4)}; f(); f();}"
+    result, environment = evaluate(parse(tokenize(code)), environment)
+    code = "{x=5; f = function() {print(x+x+x*2)}; f(); f();}"
+    result, environment = evaluate(parse(tokenize(code)), environment)
+    code = "{f = function(x) {print(x*x*x)}; f(2); f(3); f(4);}"
+    result, environment = evaluate(parse(tokenize(code)), environment)
+    code = "{z=100; f = function(x, y) {q=0.5; x=x*2;print(q*x*y*z)}; f(1,2); f(2,3); f(3,4);}"
+    result, environment = evaluate(parse(tokenize(code)), environment)
+    code = "{f = function(x, y) {return x+y;}; f(1,2); f(2,3); f(3,4);}"
 
 
 if __name__ == "__main__":
     print("test evaluator...")
-    # test_evaluate_single_value()
-    # test_evaluate_single_identifier()
-    # test_evaluate_simple_addition()
-    # test_evaluate_simple_assignment()
-    # test_evaluate_complex_expression()
-    # test_evaluate_subtraction()
-    # test_evaluate_division()
-    # test_evaluate_division_by_zero()
-    # test_evaluate_unary_operators()
-    # test_evaluate_relational_operators()
-    # test_evaluate_logical_operators()
-    # test_evaluate_if_statement()
-    # test_evaluate_while_statement()
-    # test_evaluate_block_statement()
-    # test_evaluate_function_expression()
-    # test_evaluate_function_statement()
+    test_evaluate_single_value()
+    test_evaluate_single_identifier()
+    test_evaluate_simple_addition()
+    test_evaluate_simple_assignment()
+    test_evaluate_complex_expression()
+    test_evaluate_subtraction()
+    test_evaluate_division()
+    test_evaluate_division_by_zero()
+    test_evaluate_unary_operators()
+    test_evaluate_relational_operators()
+    test_evaluate_logical_operators()
+    test_evaluate_if_statement()
+    test_evaluate_while_statement()
+    test_evaluate_block_statement()
+    test_evaluate_function_expression()
+    test_evaluate_function_statement()
+    test_evaluate_print_statement()
     test_evaluate_function_call()
     print("done.")
