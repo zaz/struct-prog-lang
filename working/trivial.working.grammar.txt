@@ -1,0 +1,50 @@
+// Define basic elements
+number = /([0-9]+(\.[0-9]+)?([eE][-+]?[0-9]+)?)/;
+identifier = /[a-zA-Z_][a-zA-Z0-9_]*/;
+boolean = "true" | "false";
+string = /"[^"]*"/; // Simple string definition for object keys and string literals
+
+// Define function and expression lists
+identifier_list = "(" [ identifier { "," identifier } ] ")";
+expression_list = "(" [ expression { "," expression } ] ")"; // Includes parentheses here
+
+// Array Literals
+array_elements = [ expression { "," expression } ]; // Allows empty or filled arrays
+array_literal = "[" array_elements "]"; // Define array literals immediately after its elements definition
+
+// Object literals
+object_pair = (identifier | string) ":" expression; // Define a pair in an object literal
+object_pairs = [ object_pair { "," object_pair } ]; // Allows empty or filled object literals
+object_literal = "{" object_pairs "}"; // Define object literals
+
+// Expressions
+reference = identifier | reference '[' expression ']' | reference '.' identifier;  // Complex reference including arrays and properties
+arithmetic_factor = number | boolean | string | reference | array_literal | object_literal | function_call | "(" expression ")" | "-" arithmetic_factor | function_expression;
+arithmetic_term = arithmetic_factor { ("*" | "/") arithmetic_factor };
+arithmetic_expression = arithmetic_term { ("+" | "-") arithmetic_term };
+relational_expression = arithmetic_expression { ("<" | ">" | "<=" | ">=" | "==" | "!=") arithmetic_expression };
+logical_factor = relational_expression | "!" logical_factor;
+logical term = logical_factor { "&&" logical_factor };
+logical_expression = logical_term { "||" logical term };
+
+// Function calls without parentheses in the rule, using expression_list
+function_call = expression expression_list;
+
+// Function definitions
+function_expression = "function" identifier_list block_statement;
+
+// Assignment using reference
+assignment = reference "=" expression;
+
+// Statements
+block_statement = "{" { statement ";" } "}";
+if_statement = "if" "(" expression ")" statement "else" statement;
+while_statement = "while" "(" expression ")" statement;
+return_statement = "return" [ expression ];
+print_statement = "print" expression_list;
+function_statement = "function" identifier identifier_list block_statement;
+statement = block_statement | if_statement | while_statement | function_statement | return_statement | print_statement | assignment | expression;
+
+// Top-level structure
+expression = logical_expression;
+program = { statement ";" };

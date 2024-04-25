@@ -56,7 +56,12 @@ def parse_arithmetic_factor(tokens):
         node = {"tag": "<identifier>", "value": token["value"]}
         tokens = tokens[1:]
         if tokens[0]["tag"] == "(":
-            node["arguments"], tokens = parse_expression_list(tokens)
+            arguments, tokens = parse_expression_list(tokens)
+            node = {
+                "tag": "<function_call>",
+                "identifier": node,
+                "arguments": arguments
+            }
         return node, tokens
     if tag == "(":
         node, tokens = parse_relational_expression(tokens[1:])
@@ -83,20 +88,20 @@ def test_parse_arithmetic_factor():
     assert parse_arithmetic_factor(t("x"))[0] == {"tag": "<identifier>", "value": "x"}
     ast = parse_arithmetic_factor(t("x()"))[0]
     assert ast == {
-        "tag": "<identifier>",
-        "value": "x",
+        "tag": "<function_call>",
+        "identifier": {"tag": "<identifier>", "value": "x"},
         "arguments": None,
     }
     ast = parse_arithmetic_factor(t("x(1)"))[0]
     assert ast == {
-        "tag": "<identifier>",
-        "value": "x",
+        "tag": "<function_call>",
+        "identifier": {"tag": "<identifier>", "value": "x"},
         "arguments": {"tag": "<number>", "value": 1},
     }
     ast = parse_arithmetic_factor(t("x(1,2+3)"))[0]
     assert ast == {
-        "tag": "<identifier>",
-        "value": "x",
+        "tag": "<function_call>",
+        "identifier": {"tag": "<identifier>", "value": "x"},
         "arguments": {
             "tag": "<number>",
             "value": 1,
