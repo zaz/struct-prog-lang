@@ -47,6 +47,10 @@ def evaluate_expression(ast, environment):
         result, local_environment = evaluate(function["body"], local_environment)
         return result, environment
 
+    if ast["tag"] == "return":
+        print(ast)
+        exit(0)
+
     # unary operations
     if ast["tag"] == "negate":
         value, environment = evaluate(ast["value"], environment)
@@ -358,7 +362,6 @@ def test_evaluate_print_statement():
     equals("print(1)", {}, None, None)
     equals("print(1,2)", {}, None, None)
     equals("print(1,2,3+4)", {}, None, None)
-
 
 def test_evaluate_function_call():
     print("test evaluate function call.")
